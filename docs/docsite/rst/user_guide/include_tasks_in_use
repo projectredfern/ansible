@@ -1,0 +1,144 @@
+Include_files: A Worked Example
+===============================
+
+.. contents::Topics
+
+Here is an example of a large unwieldy playbook:
+
+---
+# original_playbook.yml
+# building a RHEL desktop
+- hosts: all
+  remote_user: ansible
+  tasks:
+  - name: update server
+    yum:
+      name: '*'
+      state: latest
+- name: add epel-release
+  yum:
+    name: epel-release
+    state: present
+- name: add rpmfusion
+  yum: 
+    name: https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm 
+    state: present
+- name: install RHEL software
+  yum:
+    name: '{{ packages }}'
+    state: present
+  vars:
+    packages:
+      - hamster-time-tracker
+      - kate
+      - Zim
+      - vlc
+      - htop
+      - atop
+      - okular
+      - gcc
+- name: remove RHEL software
+  yum:
+    name: '{{ packages }}'
+    state: absent
+  vars:
+    packages:
+      - neovim
+      - gnome-weather
+      - orca
+      - evince
+      - mg
+      - nano  
+      - pico
+      - gnome-boxes
+
+At 45 lines long, original_playbook.yml is not huge, but given time, it could get big and ugly. Let's break it down into more manageable files, that I will call "task files" for the remainder of this essay. I have created a task file for each of the actions that original_playbook.yml performed - update server, install repos, install software and remove software. This was my choice, but I tried to create files of tasks that *felt* similar. My task files are:
+
+* update_my_box.yml - a yml task file for updating my server
+* install_github_repos.yml - a yml task file for installing useful github repositories
+* install_RHEL_software.yml - a yml task file for installing some useful desktop software
+* remove_RHEL_software.yml - a yml task file for removing software that I no longer find useful.
+
+Their contents are below:
+
+---
+# update_my_box.yml
+tasks:
+- name: update server
+  yum:
+    name: '*'
+    state: latest
+
+---
+# install_github_repos.yml
+- name: add epel-release
+  yum:
+    name: epel-release
+    state: present
+- name: add rpmfusion
+  yum: 
+    name: https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm 
+    state: present
+
+---
+# install_RHEL_software.yml
+- name: install RHEL software
+  yum:
+    name: '{{ packages }}'
+    state: present
+  vars:
+    packages:
+      - hamster-time-tracker
+      - kate
+      - Zim
+      - vlc
+      - htop
+      - atop
+      - okular
+      - gcc
+
+---
+# remove_RHEL_software.yml
+- name: remove RHEL software
+  yum:
+    name: '{{ packages }}'
+    state: absent
+  vars:
+    packages:
+      - neovim
+      - gnome-weather
+      - orca
+      - evince
+      - mg
+      - nano  
+      - pico
+      - gnome-boxes
+
+
+Having split the playbook original_playbook.yml into managable chunks, I can use the module include_tasks in the file RHEL_desktop.yml, which is shown below:
+
+---
+# RHEL_desktop.yml
+# building a RHEL desktop
+- hosts: all
+  remote_user: root
+  tasks:
+  - name: update my box
+    include_tasks: /home/dpl/ansible/playbooks/update_my_box.yml
+  - name: install github repositories
+    include_tasks: /home/dpl/ansible/playbooks/install_github_repos.yml
+  - name: install RHEL software
+    include_tasks: /home/dpl/ansible/playbooks/install_RHEL_software.yml
+  - name: remove RHEL software
+    include_tasks: /home/dpl/ansible/playbooks/remove_RHEL_software.yml
+
+
+RHEL_desktop.yml is the playbook now. Look how clean and tidy it is! Notice that:
+* RHEL_desktop.yml has a header, as all playbooks (and plays) have, comprised of hosts, the remote user and tasks.
+* tasks use the module "include_tasks" to refer to the task files we created earlier on, which will be easy to maintain - change one task file and every playbook that refers to that task file will use it properly.
+* most of all notice: task files don't have those header elements thats playbooks have.
+
+
+
+
+
